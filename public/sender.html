@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HyperCanvas — Broadcast</title>
+<link rel="stylesheet" href="/css/app.css" />
+</head>
+<body class="sender">
+  <header>
+    <h1>HyperCanvas</h1>
+    <span id="status" data-tone="idle">connecting</span>
+  </header>
+
+  <main>
+    <section class="panel">
+      <h2>Broadcast</h2>
+      <div class="row">
+        <button id="start" class="primary">Start Broadcast</button>
+        <button id="stop" class="danger" hidden>Stop</button>
+        <span class="muted"><b id="peer-count">0</b> headset(s) connected</span>
+      </div>
+      <video id="preview" autoplay playsinline muted></video>
+      <p class="hint">
+        Pick the virtual display you created in BetterDisplay. Sharing your
+        built-in screen works, but you lose the ultrawide shape.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Encoder</h2>
+      <div class="grid">
+        <label>Width
+          <input id="width" type="number" value="3840" step="16" min="1280" max="7680" />
+        </label>
+        <label>Height
+          <input id="height" type="number" value="1600" step="16" min="720" max="4320" />
+        </label>
+        <label>Frame rate
+          <select id="fps">
+            <option value="30">30</option>
+            <option value="60" selected>60</option>
+            <option value="72">72</option>
+            <option value="90">90</option>
+          </select>
+        </label>
+        <label>Codec
+          <select id="codec">
+            <option value="H264" selected>H.264 (hardware both ends)</option>
+            <option value="VP9">VP9 (sharper text, software encode)</option>
+            <option value="AV1">AV1 (experimental)</option>
+            <option value="auto">Browser default</option>
+          </select>
+        </label>
+        <label>Content hint
+          <select id="hint">
+            <option value="text" selected>text — code and UI</option>
+            <option value="detail">detail — mixed</option>
+            <option value="motion">motion — video playback</option>
+          </select>
+        </label>
+        <label class="wide">Max bitrate <span id="bitrate-val">40 Mbps</span>
+          <input id="bitrate" type="range" min="5" max="120" step="5" value="40" />
+        </label>
+      </div>
+      <p class="hint">
+        WebRTC defaults to a few Mbps because it assumes a bad network. On a
+        LAN you can afford 40–80. If <code>qualityLimitation</code> below reads
+        <code>bandwidth</code>, your Wi-Fi is the ceiling, not this slider.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>Open on the headset</h2>
+      <pre id="urls">…</pre>
+      <p class="hint">
+        The certificate is self-signed, so Quest Browser warns you once. Tap
+        <b>Advanced → Proceed</b>. WebXR still gets a secure context.
+      </p>
+    </section>
+
+    <section class="panel wide-panel">
+      <h2>Live stats</h2>
+      <table id="stats">
+        <thead>
+          <tr>
+            <th>viewer</th><th>resolution</th><th>fps</th><th>Mbps</th>
+            <th>codec</th><th>rtt ms</th><th>lost</th><th>limited by</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="panel wide-panel">
+      <h2>Log</h2>
+      <div id="log" class="log"></div>
+    </section>
+  </main>
+
+  <script type="module" src="/js/sender.js"></script>
+</body>
+</html>

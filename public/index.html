@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+<title>HyperCanvas — Workspace</title>
+<link rel="stylesheet" href="/css/app.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three": "/vendor/three/three.module.js",
+    "three/webgpu": "/vendor/three/three.webgpu.js",
+    "three/tsl": "/vendor/three/three.tsl.js",
+    "three/addons/": "/vendor/three/addons/"
+  }
+}
+</script>
+</head>
+<body class="quest">
+  <!--
+    The stream lands here. It stays in the DOM and hidden: the compositor
+    layer path reads frames straight off this element, and the fallback path
+    wraps it in a VideoTexture. Muted + playsinline so autoplay policy does
+    not block the first frame.
+  -->
+  <video id="stream" autoplay playsinline muted hidden></video>
+
+  <div class="enter-card">
+    <h1>HyperCanvas</h1>
+    <p>Spatial workspace for Quest&nbsp;3. Start the broadcast on your Mac, then step in.</p>
+    <button id="enter-xr" disabled>Enter Workspace</button>
+    <div id="xr-status">checking WebXR support…</div>
+    <p class="hint">
+      A — cycle environment &nbsp;·&nbsp; B — desk passthrough portal<br />
+      X — screen sharpness mode &nbsp;·&nbsp; Y — status panel<br />
+      Left stick click — recentre &nbsp;·&nbsp; Right grip + sticks — calibrate desk
+    </p>
+  </div>
+
+  <script type="module" src="/js/quest.js"></script>
+</body>
+</html>
