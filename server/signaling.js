@@ -6,21 +6,24 @@ import { WebSocketServer } from 'ws';
  * tab for testing). The sender opens a separate RTCPeerConnection per viewer,
  * so a viewer reconnecting never disturbs the others.
  *
- * Everything is host-candidate-only over the LAN: no STUN, no TURN, nothing
- * that costs money or leaves the building.
+ * Everything is host-candidate-only over the LAN or the USB cable: no STUN,
+ * no TURN, nothing that costs money or leaves the building.
+ *
+ * The hub owns ONE peer registry shared across every transport it is attached
+ * to. That matters: the Mac usually connects over plain HTTP on loopback while
+ * the headset comes in over HTTPS on the LAN, and those are two different
+ * servers. Give each its own registry and the two ends never see each other.
  */
-export function attachSignaling(server) {
-  const wss = new WebSocketServer({ server, path: '/ws' });
+export function createSignalingHub() {
   const peers = new Map(); // id -> { ws, role }
 
   const send = (ws, msg) => {
     if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
   };
 
-  const senders = () => [...peers.entries()].filter(([, p]) => p.role === 'sender');
-  const viewers = () => [...peers.entries()].filter(([, p]) => p.role === 'viewer');
+  const withRole = (role) => [...peers.entries()].filter(([, p]) => p.role === role);
 
-  wss.on('connection', (ws) => {
+  function handleConnection(ws) {
     const id = randomUUID().slice(0, 8);
     let role = null;
 
@@ -36,14 +39,9 @@ export function attachSignaling(server) {
         case 'hello': {
           role = msg.role === 'sender' ? 'sender' : 'viewer';
           peers.set(id, { ws, role });
-          send(ws, {
-            type: 'welcome',
-            id,
-            peers: (role === 'sender' ? viewers() : senders()).map(([pid]) => pid),
-          });
-          // Tell the other side someone showed up.
-          const others = role === 'sender' ? viewers() : senders();
-          for (const [pid, p] of others) send(p.ws, { type: 'peer-join', id, role });
+          const counterparts = withRole(role === 'sender' ? 'viewer' : 'sender');
+          send(ws, { type: 'welcome', id, peers: counterparts.map(([pid]) => pid) });
+          for (const [, p] of counterparts) send(p.ws, { type: 'peer-join', id, role });
           console.log(`  [signal] ${role} ${id} connected (${peers.size} total)`);
           break;
         }
@@ -57,7 +55,7 @@ export function attachSignaling(server) {
         // A viewer that loaded before the Mac hit "Start Broadcast" pokes the
         // sender so it knows to build an offer for it.
         case 'request-stream': {
-          for (const [, p] of senders()) send(p.ws, { type: 'request-stream', from: id });
+          for (const [, p] of withRole('sender')) send(p.ws, { type: 'request-stream', from: id });
           break;
         }
 
@@ -74,7 +72,17 @@ export function attachSignaling(server) {
     });
 
     ws.on('error', () => ws.close());
-  });
+  }
 
-  return wss;
+  return {
+    /** Attach the hub to an http(s) server. Safe to call more than once. */
+    attach(server) {
+      const wss = new WebSocketServer({ server, path: '/ws' });
+      wss.on('connection', handleConnection);
+      return wss;
+    },
+    get size() {
+      return peers.size;
+    },
+  };
 }

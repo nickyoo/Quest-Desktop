@@ -3,12 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Zero-cost spatial macOS workspace for Meta Quest 3 — WebRTC screen stream into a WebXR environment.",
-  "engines": { "node": ">=20" },
+  "description": "Zero-cost spatial macOS workspace for Meta Quest 3 \u2014 WebRTC screen stream into a WebXR environment.",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "certs": "node scripts/make-certs.mjs",
+    "usb": "node scripts/usb-link.mjs",
     "start": "node server/index.js",
-    "dev": "node --watch server/index.js"
+    "dev": "node --watch server/index.js",
+    "test": "node scripts/selftest.mjs"
   },
   "dependencies": {
     "express": "^5.2.1",

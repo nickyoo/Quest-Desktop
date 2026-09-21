@@ -9,8 +9,10 @@ export class Signal extends EventTarget {
   }
 
   connect() {
-    const url = `wss://${location.host}/ws`;
-    this.ws = new WebSocket(url);
+    // Follow the page's protocol. Over USB the page is plain http on
+    // loopback, and a hardcoded wss:// would fail every time.
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    this.ws = new WebSocket(`${proto}//${location.host}/ws`);
 
     this.ws.addEventListener('open', () => {
       this.backoff = 500;

@@ -5,11 +5,12 @@ import https from 'node:https';
 import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
-import { attachSignaling } from './signaling.js';
+import { createSignalingHub } from './signaling.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.PORT || 3000);          // HTTPS, on the LAN
+const HTTP_PORT = Number(process.env.HTTP_PORT || 3001); // HTTP, loopback only
 const CERT_DIR = path.join(ROOT, 'certs');
 
 /** All non-internal IPv4 addresses, so we can print usable LAN URLs. */
@@ -28,9 +29,8 @@ app.disable('x-powered-by');
 app.use('/vendor/three/addons', express.static(path.join(ROOT, 'node_modules/three/examples/jsm')));
 app.use('/vendor/three', express.static(path.join(ROOT, 'node_modules/three/build')));
 
-// WebXR + getDisplayMedia both demand a secure context. These headers keep the
-// isolation state predictable and stop the Quest browser from caching stale JS
-// between iterations, which will otherwise cost you an hour of confusion.
+// no-store because the Quest browser will otherwise serve you yesterday's
+// JavaScript for an hour while you wonder why your fix did nothing.
 app.use((req, res, next) => {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Permissions-Policy', 'xr-spatial-tracking=(self)');
@@ -40,7 +40,7 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(ROOT, 'public'), { extensions: ['html'] }));
 
 app.get('/api/host', (req, res) => {
-  res.json({ addresses: lanAddresses(), port: PORT });
+  res.json({ addresses: lanAddresses(), port: PORT, httpPort: HTTP_PORT });
 });
 
 function loadCerts() {
@@ -50,38 +50,46 @@ function loadCerts() {
   return { key: fs.readFileSync(key), cert: fs.readFileSync(cert) };
 }
 
-const creds = loadCerts();
-if (!creds) {
-  console.error('\n  No TLS certificate found in ./certs');
-  console.error('  WebXR and getDisplayMedia both require HTTPS. Run:\n');
-  console.error('      npm run certs\n');
-  process.exit(1);
-}
+// One hub, both transports. See the comment in signaling.js for why this is
+// not two independent relays.
+const hub = createSignalingHub();
 
-const server = https.createServer(creds, app);
-attachSignaling(server);
-
-server.listen(PORT, '0.0.0.0', () => {
-  const addrs = lanAddresses();
+/**
+ * Loopback HTTP. This is the USB path and it is the good one.
+ *
+ * `http://localhost` is a secure context in Chromium, so WebXR and
+ * getDisplayMedia both work over it with no certificate at all. Forward this
+ * port onto the headset with `npm run usb` and neither end ever sees a
+ * certificate warning.
+ *
+ * Bound to 127.0.0.1 deliberately: adb forwards to the host's loopback, so
+ * there is no reason to expose an unencrypted server to the rest of the LAN.
+ */
+const httpServer = http.createServer(app);
+hub.attach(httpServer);
+httpServer.listen(HTTP_PORT, '127.0.0.1', () => {
   console.log('\n  HyperCanvas is up.\n');
-  console.log('  On the Mac (start the broadcast here):');
-  console.log(`      https://localhost:${PORT}/sender\n`);
-  console.log('  On the Quest 3 (open in Meta Quest Browser):');
-  if (addrs.length === 0) {
-    console.log('      no LAN address detected — check your Wi-Fi connection');
-  } else {
-    for (const a of addrs) console.log(`      https://${a}:${PORT}/`);
-  }
-  console.log('\n  The certificate is self-signed, so the Quest will warn you once.');
-  console.log('  Tap "Advanced" then "Proceed" — WebXR still gets a secure context.\n');
+  console.log('  USB (recommended — no certificates, lower jitter, charges the headset):');
+  console.log(`      Mac:    http://localhost:${HTTP_PORT}/sender`);
+  console.log(`      Quest:  run "npm run usb", then open http://localhost:${HTTP_PORT}/\n`);
 });
 
-// A plain HTTP listener on PORT+1 that does nothing but redirect, so a mistyped
-// http:// URL on the headset does not look like the server is down.
-http
-  .createServer((req, res) => {
-    const host = (req.headers.host || '').split(':')[0];
-    res.writeHead(301, { Location: `https://${host}:${PORT}${req.url}` });
-    res.end();
-  })
-  .listen(PORT + 1, '0.0.0.0');
+// HTTPS over the LAN, for when you would rather not be tethered.
+const creds = loadCerts();
+if (creds) {
+  const httpsServer = https.createServer(creds, app);
+  hub.attach(httpsServer);
+  httpsServer.listen(PORT, '0.0.0.0', () => {
+    const addrs = lanAddresses();
+    console.log('  Wi-Fi (self-signed certificate — accept the warning once):');
+    if (addrs.length === 0) {
+      console.log('      no LAN address detected');
+    } else {
+      for (const a of addrs) console.log(`      Quest:  https://${a}:${PORT}/`);
+    }
+    console.log('');
+  });
+} else {
+  console.log('  Wi-Fi mode is off: no certificate in ./certs — run "npm run certs" to enable it.');
+  console.log('  USB mode needs no certificate, so you can ignore this.\n');
+}

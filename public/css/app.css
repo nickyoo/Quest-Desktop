@@ -127,3 +127,16 @@ body.quest {
 }
 #enter-xr:disabled { opacity: 0.4; cursor: not-allowed; }
 #xr-status { margin-top: 16px; font-size: 12px; color: var(--muted); min-height: 2em; }
+
+/* Elements that must keep decoding/compositing but must not be seen.
+   display:none would let Chromium throttle them. */
+.offscreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 2px;
+  height: 2px;
+  opacity: 0.01;
+  pointer-events: none;
+  z-index: -1;
+}

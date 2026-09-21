@@ -22,8 +22,13 @@
     layer path reads frames straight off this element, and the fallback path
     wraps it in a VideoTexture. Muted + playsinline so autoplay policy does
     not block the first frame.
+
+    Parked off-screen rather than `hidden`: Chromium throttles or stops
+    decoding for a display:none video, which shows up as a frozen texture
+    the moment you look away. A 2px, almost-transparent element stays in the
+    compositor and keeps decoding.
   -->
-  <video id="stream" autoplay playsinline muted hidden></video>
+  <video id="stream" class="offscreen" autoplay playsinline muted></video>
 
   <div class="enter-card">
     <h1>HyperCanvas</h1>

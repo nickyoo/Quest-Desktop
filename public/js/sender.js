@@ -255,8 +255,17 @@ function init() {
 
   fetch('/api/host')
     .then((r) => r.json())
-    .then(({ addresses, port }) => {
-      $('#urls').textContent = addresses.map((a) => `https://${a}:${port}/`).join('\n') || 'no LAN address found';
+    .then(({ addresses, port, httpPort }) => {
+      const usb = [
+        'USB  (no certificate needed)',
+        `  run: npm run usb`,
+        `  then open on the headset:  http://localhost:${httpPort}/`,
+      ];
+      const wifi = addresses.length
+        ? ['', 'Wi-Fi  (accept the certificate warning once)',
+           ...addresses.map((a) => `  https://${a}:${port}/`)]
+        : ['', 'Wi-Fi  no LAN address detected'];
+      $('#urls').textContent = [...usb, ...wifi].join('\n');
     });
 }
 

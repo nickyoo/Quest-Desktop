@@ -131,8 +131,10 @@ function buildScene() {
   // Supersample a little: the scene is trivially cheap and this visibly helps
   // the textured-mesh fallback. Harmless when the media layer is doing the work.
   renderer.xr.setFramebufferScaleFactor(1.2);
+  // Off-screen rather than display:none, for the same reason as the video:
+  // a detached-looking canvas invites the compositor to deprioritise it.
+  canvas.className = 'offscreen';
   document.body.append(canvas);
-  canvas.style.display = 'none';
 
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, 1, 0.05, 260);
