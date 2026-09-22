@@ -21,6 +21,8 @@ through an importmap in `public/index.html`, with three.js vendored out of
 - `public/js/sender.js` — the Mac side: capture, per-viewer peer connections.
 - `public/js/quest.js` + `public/js/xr/` — the headset side.
 - `scripts/selftest.mjs` — everything verifiable without a headset.
+- `TESTING.md` — the staged testing runbook: what to check at each stage, and
+  how to exercise the viewer page without putting the headset on.
 
 ## Commands
 
