@@ -35,6 +35,18 @@
     <p>Spatial workspace for Quest&nbsp;3. Start the broadcast on your Mac, then step in.</p>
     <button id="enter-xr" disabled>Enter Workspace</button>
     <div id="xr-status">checking WebXR support…</div>
+
+    <!--
+      Visible only outside an immersive session. Without this the page renders
+      nothing at all until you enter XR, which makes it impossible to tell a
+      broken stream from a broken WebXR session. Being able to confirm the
+      video arrived *before* putting the headset on is worth a lot of
+      debugging time.
+    -->
+    <div class="preview-card" id="preview-card" hidden>
+      <video id="preview" autoplay playsinline muted></video>
+      <pre id="stats-2d">waiting for stream…</pre>
+    </div>
     <p class="hint">
       A — cycle environment &nbsp;·&nbsp; B — desk passthrough portal<br />
       X — screen sharpness mode &nbsp;·&nbsp; Y — status panel<br />

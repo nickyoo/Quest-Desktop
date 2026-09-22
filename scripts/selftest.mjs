@@ -34,6 +34,7 @@ const modules = [];
   }
 })('public/js');
 
+const indexSrcEarly = fs.readFileSync('public/index.html', 'utf8');
 let unresolved = 0;
 for (const file of modules) {
   const src = fs.readFileSync(file, 'utf8');
@@ -57,6 +58,12 @@ for (const [spec, target] of Object.entries(importmap)) {
   const onDisk = path.join('node_modules/three/build', path.basename(target));
   check(`importmap "${spec}" exists on disk`, fs.existsSync(onDisk));
 }
+
+// The flat-page preview is what makes stage 2 of the test plan possible:
+// verifying the stream end to end from a desktop browser, with no headset.
+const questSrc = fs.readFileSync('public/js/quest.js', 'utf8');
+check('entry page has a stream preview', /id="preview"/.test(indexSrcEarly) && /id="stats-2d"/.test(indexSrcEarly));
+check('client attaches and detaches the preview', /attachPreview\(/.test(questSrc) && /detachPreview\(/.test(questSrc));
 
 // A hardcoded wss:// silently breaks the entire USB path, so guard it.
 const signalSrc = fs.readFileSync('public/js/lib/signal.js', 'utf8');

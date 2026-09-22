@@ -8,6 +8,9 @@ import { StatusPanel } from './ui/panel.js';
 const video = document.getElementById('stream');
 const enterBtn = document.getElementById('enter-xr');
 const statusEl = document.getElementById('xr-status');
+const preview = document.getElementById('preview');
+const previewCard = document.getElementById('preview-card');
+const flatStats = document.getElementById('stats-2d');
 
 const app = {
   renderer: null,
@@ -24,6 +27,7 @@ const app = {
   refSpace: null,
   signal: null,
   pc: null,
+  stream: null,
   senderId: null,
   stats: {},
   connection: 'waiting for broadcast',
@@ -51,9 +55,11 @@ function createPeer(senderId) {
   app.pc = pc;
 
   pc.addEventListener('track', (ev) => {
-    video.srcObject = ev.streams[0];
+    app.stream = ev.streams[0];
+    video.srcObject = app.stream;
     video.play().catch(() => { /* resumed by the enter-XR gesture */ });
     app.connection = 'streaming';
+    if (!app.session) attachPreview();
     // The media layer needs real frames before it will accept the element.
     video.addEventListener('loadeddata', () => attemptLayer(), { once: true });
   });
@@ -68,6 +74,37 @@ function createPeer(senderId) {
   });
 
   return pc;
+}
+
+function attachPreview() {
+  if (!app.stream) return;
+  preview.srcObject = app.stream;
+  preview.play().catch(() => {});
+  previewCard.hidden = false;
+}
+
+function detachPreview() {
+  preview.srcObject = null;
+  previewCard.hidden = true;
+}
+
+/**
+ * The same numbers the in-headset panel shows, rendered to the flat page.
+ * This is what lets you verify the whole capture -> encode -> network ->
+ * decode chain from a desktop browser, before WebXR is in the picture.
+ */
+function renderFlatStats() {
+  if (app.session) return;
+  const s = app.stats;
+  const fmt = (v, d = 0, suffix = '') => (v == null ? '—' : `${v.toFixed(d)}${suffix}`);
+  flatStats.textContent = [
+    `link       ${app.connection}`,
+    `source     ${s.width ? `${s.width}x${s.height}` : '—'}`,
+    `codec      ${s.codec || '—'}  (${s.decoder || 'decoder unknown'})`,
+    `rate       ${fmt(s.fps, 0)} fps   ${fmt(s.mbps, 1, ' Mbps')}`,
+    `latency    ${fmt(s.rtt, 1, ' ms rtt')}`,
+    `frames     ${s.dropped ?? '—'} dropped, ${s.lost ?? '—'} packets lost`,
+  ].join('\n');
 }
 
 async function onSignal({ from, data }) {
@@ -204,6 +241,7 @@ async function enterXR() {
   app.session = session;
   app.sessionMode = mode;
   enterBtn.disabled = true;
+  detachPreview();
 
   session.addEventListener('end', () => {
     app.session = null;
@@ -211,6 +249,7 @@ async function enterXR() {
     app.screen.layerActive = false;
     app.screen._syncMeshVisibility();
     enterBtn.disabled = false;
+    attachPreview();
     status('session ended');
   });
 
@@ -321,6 +360,7 @@ async function pollStats(t) {
     if (r.type === 'codec' && r.mimeType?.startsWith('video/')) s.codec = r.mimeType.split('/')[1];
   });
   app.stats = s;
+  renderFlatStats();
 }
 
 function panelLines() {
