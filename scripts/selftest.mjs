@@ -8,7 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import http from 'node:http';
 import { WebSocket } from 'ws';
-import { createSignalingHub } from '../server/signaling.js';
+import { createSignalingHub, isAllowedOrigin } from '../server/signaling.js';
 import { mungeBitrate } from '../public/js/lib/rtc.js';
 
 let failed = 0;
@@ -190,6 +190,45 @@ macSide.ws.close();
 questSide.ws.close();
 server.close();
 serverB.close();
+
+// ------------------------------------------------------- 5. origin policy
+
+// A WebSocket handshake is not bound by the same-origin policy, so the server
+// is the only thing standing between a random webpage and your desktop stream.
+// These are the cases that matter; if one of them flips, that is a screen leak,
+// not a style regression.
+console.log('\n  websocket origin policy');
+const PORTS = [3000, 3001];
+const LAN = ['192.168.1.42'];
+const allow = (o) => isAllowedOrigin(o, PORTS, LAN);
+
+check('loopback sender origin allowed', allow('http://localhost:3001'));
+check('loopback by IP allowed', allow('http://127.0.0.1:3001'));
+check('LAN https origin allowed', allow('https://192.168.1.42:3000'));
+check('non-browser client (no Origin) allowed', allow(undefined));
+
+check('remote site rejected', !allow('https://evil.example.com'));
+check('remote site on our port rejected', !allow('https://evil.example.com:3000'));
+check('sandboxed/file origin ("null") rejected', !allow('null'));
+check('loopback on a foreign port rejected', !allow('http://localhost:8080'));
+check('LAN address we do not hold rejected', !allow('https://192.168.1.99:3000'));
+check('hostname merely CONTAINING localhost rejected', !allow('http://localhost.evil.com:3001'));
+check('non-http scheme rejected', !allow('ws://localhost:3001'));
+
+// And the same policy, live, through an actual handshake.
+const guarded = createSignalingHub({ ports: [] });
+const guardedServer = http.createServer((req, res) => res.end('ok'));
+guarded.attach(guardedServer);
+await new Promise((r) => guardedServer.listen(0, '127.0.0.1', r));
+const guardedUrl = `ws://127.0.0.1:${guardedServer.address().port}/ws`;
+
+const rejected = await new Promise((resolve) => {
+  const ws = new WebSocket(guardedUrl, { origin: 'https://evil.example.com' });
+  ws.on('open', () => { ws.close(); resolve(false); });
+  ws.on('error', () => resolve(true));
+});
+check('handshake from a foreign origin is refused', rejected);
+guardedServer.close();
 
 console.log(failed ? `\n  ${failed} check(s) FAILED\n` : '\n  all checks passed\n');
 process.exit(failed ? 1 : 0);

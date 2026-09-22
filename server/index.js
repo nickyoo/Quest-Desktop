@@ -52,7 +52,11 @@ function loadCerts() {
 
 // One hub, both transports. See the comment in signaling.js for why this is
 // not two independent relays.
-const hub = createSignalingHub();
+//
+// The ports are not decoration: they are half of the origin allowlist that
+// keeps a random webpage from asking this hub for your screen. See
+// `isAllowedOrigin`.
+const hub = createSignalingHub({ ports: [PORT, HTTP_PORT] });
 
 /**
  * Loopback HTTP. This is the USB path and it is the good one.
