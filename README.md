@@ -70,6 +70,10 @@ headset over Wi-Fi — and the two ends still find each other.
 
 ## Your first test
 
+**[TESTING.md](TESTING.md) is the full staged runbook** — seven stages, each
+adding one variable, with expected output and a failure table for every one.
+Use that when you actually sit down to test. The short version:
+
 Run `npm test` first. It checks everything that does not need a headset.
 
 Then, in order:
