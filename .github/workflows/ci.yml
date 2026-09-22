@@ -1,0 +1,28 @@
+# The gate, enforced. `npm test` is scripts/selftest.mjs — everything about this
+# project that can be verified without a headset on your face.
+#
+# It is not a formality. It covers the WebSocket origin allowlist, and a silent
+# pass there is a screen leak rather than a style regression: see the security
+# section of CLAUDE.md.
+#
+# Deliberately NOT in this workflow: anything needing a Quest, a display, or a
+# real getDisplayMedia. Those are verified by a human wearing the headset, and
+# a change that only passes here is not verified.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20 # package.json engines: >=20
+          cache: npm
+      - run: npm ci
+      - run: npm test
